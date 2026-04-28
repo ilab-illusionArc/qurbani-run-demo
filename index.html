@@ -1,133 +1,380 @@
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Qurbani Run</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-  </head>
-  <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Qurbani Run</div>
-      </div>
-    </div>
-    <script>
-      var canvas = document.querySelector("#unity-canvas");
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
+  <title>Qurbani Run</title>
+
+  <meta
+          name="viewport"
+          content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+  />
+
+  <meta name="theme-color" content="#000000" />
+
+  <link rel="shortcut icon" href="TemplateData/favicon.ico" />
+
+  <!-- Preload only smaller critical files. Do NOT preload v3.data.br because it is usually huge. -->
+  <link rel="preload" href="Build/v3.loader.js" as="script" />
+  <link rel="preload" href="Build/v3.framework.js.br" as="script" />
+  <link rel="preload" href="Build/v3.wasm.br" as="fetch" type="application/wasm" crossorigin="anonymous" />
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #unity-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #unity-canvas {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      outline: none;
+    }
+
+    #unity-loading-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+              radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 45%),
+              #000;
+      color: #fff;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+
+    #unity-loading-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    #unity-loading-box {
+      width: min(360px, 78vw);
+      text-align: center;
+    }
+
+    #unity-title {
+      margin-bottom: 18px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    #unity-progress-bar-empty {
+      width: 100%;
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.08);
+    }
+
+    #unity-progress-bar-full {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: #fff;
+      transition: width 0.15s ease;
+    }
+
+    #unity-loading-text {
+      margin-top: 14px;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    #unity-warning {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 12px);
+      left: 50%;
+      z-index: 40;
+      display: none;
+      width: min(780px, calc(100vw - 24px));
+      transform: translateX(-50%);
+      font-size: 14px;
+      line-height: 1.45;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    #unity-warning div {
+      margin-bottom: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    #unity-warning .error {
+      background: #ff3b30;
+      color: #fff;
+    }
+
+    #unity-warning .warning {
+      background: #ffd60a;
+      color: #111;
+    }
+
+    #fatal-error {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: #000;
+      color: #fff;
+      text-align: center;
+    }
+
+    #fatal-error-box {
+      width: min(720px, 100%);
+      padding: 24px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    #fatal-error-title {
+      margin-bottom: 10px;
+      color: #ff5a4f;
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    #fatal-error-message {
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+
+<body>
+<div id="unity-container">
+  <canvas id="unity-canvas" tabindex="-1"></canvas>
+  <div id="unity-warning"></div>
+</div>
+
+<div id="unity-loading-screen">
+  <div id="unity-loading-box">
+    <div id="unity-title">Qurbani Run</div>
+
+    <div id="unity-progress-bar-empty">
+      <div id="unity-progress-bar-full"></div>
+    </div>
+
+    <div id="unity-loading-text">Loading game...</div>
+  </div>
+</div>
+
+<div id="fatal-error">
+  <div id="fatal-error-box">
+    <div id="fatal-error-title">Game failed to load</div>
+    <div id="fatal-error-message"></div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.querySelector("#unity-canvas");
+  const container = document.querySelector("#unity-container");
+  const loadingScreen = document.querySelector("#unity-loading-screen");
+  const loadingText = document.querySelector("#unity-loading-text");
+  const progressBarFull = document.querySelector("#unity-progress-bar-full");
+  const warningBanner = document.querySelector("#unity-warning");
+  const fatalError = document.querySelector("#fatal-error");
+  const fatalErrorMessage = document.querySelector("#fatal-error-message");
+
+  const buildUrl = "Build";
+  const loaderUrl = buildUrl + "/v3.loader.js";
+
+  const config = {
+    arguments: [],
+    dataUrl: buildUrl + "/v3.data.br",
+    frameworkUrl: buildUrl + "/v3.framework.js.br",
+    codeUrl: buildUrl + "/v3.wasm.br",
+    streamingAssetsUrl: "StreamingAssets",
+    companyName: "DefaultCompany",
+    productName: "Qurbani Run",
+    productVersion: "0.1.0",
+    showBanner: unityShowBanner
+  };
+
+  /*
+    Faster mobile performance:
+    High-DPI phones can render too many pixels.
+    This keeps quality acceptable while reducing lag and heat.
+  */
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    config.devicePixelRatio = 1;
+  } else {
+    config.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+  }
+
+  function resizeGame() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    container.style.width = width + "px";
+    container.style.height = height + "px";
+
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+  }
+
+  window.addEventListener("resize", resizeGame, { passive: true });
+  window.addEventListener("orientationchange", function () {
+    setTimeout(resizeGame, 250);
+  });
+
+  resizeGame();
+
+  function unityShowBanner(msg, type) {
+    function updateBannerVisibility() {
+      warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+    }
+
+    const div = document.createElement("div");
+    div.innerHTML = msg;
+    div.className = type === "error" ? "error" : "warning";
+
+    warningBanner.appendChild(div);
+
+    if (type !== "error") {
+      setTimeout(function () {
+        if (div.parentNode) {
+          warningBanner.removeChild(div);
         }
         updateBannerVisibility();
+      }, 5000);
+    }
+
+    updateBannerVisibility();
+  }
+
+  function showFatalError(message) {
+    loadingScreen.classList.add("hidden");
+    fatalError.style.display = "flex";
+    fatalErrorMessage.textContent = message;
+  }
+
+  function hideLoadingScreen() {
+    loadingScreen.classList.add("hidden");
+  }
+
+  function focusGame() {
+    try {
+      canvas.focus();
+    } catch (error) {
+      // Ignore focus errors.
+    }
+  }
+
+  window.addEventListener("click", focusGame);
+  window.addEventListener("touchstart", focusGame, { passive: true });
+
+  function loadUnity() {
+    loadingText.textContent = "Loading Unity engine...";
+
+    const script = document.createElement("script");
+    script.src = loaderUrl;
+    script.async = true;
+
+    script.onload = function () {
+      if (typeof createUnityInstance !== "function") {
+        showFatalError(
+                "Unity loader loaded, but createUnityInstance was not found.\n\nCheck that Build/v3.loader.js is the real Unity loader file, not a Git LFS pointer."
+        );
+        return;
       }
 
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/v3.loader.js";
-      var config = {
-        arguments: [],
-        dataUrl: buildUrl + "/v3.data.br",
-        frameworkUrl: buildUrl + "/v3.framework.js.br",
-        codeUrl: buildUrl + "/v3.wasm.br",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "DefaultCompany",
-        productName: "Qurbani Run",
-        productVersion: "0.1.0",
-        showBanner: unityShowBanner,
-        // errorHandler: function(err, url, line) {
-        //    alert("error " + err + " occurred at line " + line);
-        //    // Return 'true' if you handled this error and don't want Unity
-        //    // to process it further, 'false' otherwise.
-        //    return true;
-        // },
-      };
+      loadingText.textContent = "Loading game files...";
 
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
+      createUnityInstance(canvas, config, function (progress) {
+        const percent = Math.round(progress * 100);
+        progressBarFull.style.width = percent + "%";
+        loadingText.textContent = "Loading game... " + percent + "%";
+      })
+              .then(function () {
+                hideLoadingScreen();
+                focusGame();
+              })
+              .catch(function (error) {
+                const msg = String(error || "");
 
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
+                if (
+                        msg.includes("Unable to parse") ||
+                        msg.includes("corrupt") ||
+                        msg.includes("compression") ||
+                        msg.includes("Content-Encoding") ||
+                        msg.includes("decompress") ||
+                        msg.includes("Encoding")
+                ) {
+                  showFatalError(
+                          "Unity build compression error.\n\nYour build files are Brotli .br files, so the server must send Content-Encoding: br.\n\nCheck your vercel.json headers for:\n- Build/v3.data.br\n- Build/v3.framework.js.br\n- Build/v3.wasm.br\n\nOriginal error:\n" + msg
+                  );
+                  return;
+                }
 
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
-
-      } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
-      }
-
-      document.querySelector("#unity-loading-bar").style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                document.querySelector("#unity-loading-bar").style.display = "none";
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
-
-              }).catch((message) => {
-                alert(message);
+                showFatalError("Unity failed to start.\n\n" + msg);
               });
-            };
+    };
 
-      document.body.appendChild(script);
+    script.onerror = function () {
+      showFatalError(
+              "Could not load Unity loader file:\n" +
+              loaderUrl +
+              "\n\nCheck that Build/v3.loader.js exists and is deployed correctly."
+      );
+    };
 
-    </script>
-  </body>
+    document.body.appendChild(script);
+  }
+
+  /*
+    Start loading immediately.
+    No manual fetch/pre-check of v3.data.br is used,
+    because that would slow loading by touching the huge data file twice.
+  */
+  loadUnity();
+</script>
+</body>
 </html>
