@@ -243,12 +243,6 @@
   */
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  if (isMobile) {
-    config.devicePixelRatio = 1;
-  } else {
-    config.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
-  }
-
   function resizeGame() {
     const width = window.innerWidth;
     const height = window.innerHeight;
