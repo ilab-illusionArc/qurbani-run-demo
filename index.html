@@ -1,24 +1,16 @@
 <!DOCTYPE html>
 <html lang="en-us">
 <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-
-  <title>Qurbani Run</title>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 
   <meta
-          name="viewport"
-          content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-  />
+    name="viewport"
+    content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes"
+  >
 
-  <meta name="theme-color" content="#000000" />
-
-  <link rel="shortcut icon" href="TemplateData/favicon.ico" />
-
-  <!-- Preload only smaller critical files. Do NOT preload v3.data.br because it is usually huge. -->
-  <link rel="preload" href="Build/v3.loader.js" as="script" />
-  <link rel="preload" href="Build/v3.framework.js.br" as="script" />
-  <link rel="preload" href="Build/v3.wasm.br" as="fetch" type="application/wasm" crossorigin="anonymous" />
+  <title>Qurbani Run Practice</title>
+  <link rel="shortcut icon" href="TemplateData/favicon.ico">
 
   <style>
     html,
@@ -29,17 +21,8 @@
       height: 100%;
       overflow: hidden;
       background: #000;
-      overscroll-behavior: none;
       touch-action: none;
-    }
-
-    body {
-      position: fixed;
-      inset: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      -webkit-user-select: none;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
     }
 
     #unity-container {
@@ -52,323 +35,184 @@
     }
 
     #unity-canvas {
-      position: absolute;
-      inset: 0;
       display: block;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
       background: #000;
       outline: none;
     }
 
-    #unity-loading-screen {
+    #unity-loading-bar {
       position: fixed;
       inset: 0;
       z-index: 20;
       display: flex;
       align-items: center;
       justify-content: center;
-      background:
-              radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 45%),
-              #000;
-      color: #fff;
-      transition: opacity 0.35s ease, visibility 0.35s ease;
+      background: #000;
     }
 
-    #unity-loading-screen.hidden {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    #unity-loading-box {
-      width: min(360px, 78vw);
+    .unity-loader-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px;
       text-align: center;
     }
 
-    #unity-title {
-      margin-bottom: 18px;
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-    }
-
-    #unity-progress-bar-empty {
-      width: 100%;
-      height: 12px;
-      overflow: hidden;
+    .unity-spinner {
+      width: 56px;
+      height: 56px;
+      border: 5px solid rgba(255, 255, 255, 0.18);
+      border-top-color: #fff;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.18);
-      box-shadow: 0 0 30px rgba(255, 255, 255, 0.08);
+      animation: unity-spin 0.8s linear infinite;
     }
 
-    #unity-progress-bar-full {
-      width: 0%;
-      height: 100%;
-      border-radius: 999px;
-      background: #fff;
-      transition: width 0.15s ease;
+    .unity-loading-text {
+      max-width: 86vw;
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      line-height: 1.5;
+      font-weight: 600;
+      color: #fff;
     }
 
-    #unity-loading-text {
-      margin-top: 14px;
-      color: rgba(255, 255, 255, 0.78);
-      font-size: 13px;
-      line-height: 1.4;
+    @keyframes unity-spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     #unity-warning {
       position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + 12px);
+      top: 12px;
       left: 50%;
-      z-index: 40;
+      z-index: 30;
       display: none;
-      width: min(780px, calc(100vw - 24px));
+      max-width: 90vw;
       transform: translateX(-50%);
+      font-family: Arial, sans-serif;
       font-size: 14px;
-      line-height: 1.45;
       text-align: center;
-      pointer-events: none;
     }
 
     #unity-warning div {
-      margin-bottom: 10px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-    }
-
-    #unity-warning .error {
-      background: #ff3b30;
-      color: #fff;
-    }
-
-    #unity-warning .warning {
-      background: #ffd60a;
-      color: #111;
-    }
-
-    #fatal-error {
-      position: fixed;
-      inset: 0;
-      z-index: 60;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background: #000;
-      color: #fff;
-      text-align: center;
-    }
-
-    #fatal-error-box {
-      width: min(720px, 100%);
-      padding: 24px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
-    }
-
-    #fatal-error-title {
-      margin-bottom: 10px;
-      color: #ff5a4f;
-      font-size: 22px;
-      font-weight: 800;
-    }
-
-    #fatal-error-message {
-      color: rgba(255, 255, 255, 0.86);
-      font-size: 14px;
-      line-height: 1.6;
-      white-space: pre-line;
+      margin-bottom: 6px;
+      border-radius: 8px;
+      color: #000;
     }
   </style>
 </head>
 
 <body>
-<div id="unity-container">
-  <canvas id="unity-canvas" tabindex="-1"></canvas>
-  <div id="unity-warning"></div>
-</div>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
 
-<div id="unity-loading-screen">
-  <div id="unity-loading-box">
-    <div id="unity-title">Qurbani Run</div>
+    <div id="unity-loading-bar">
+      <div class="unity-loader-content">
+        <div class="unity-spinner"></div>
 
-    <div id="unity-progress-bar-empty">
-      <div id="unity-progress-bar-full"></div>
+        <div class="unity-loading-text">
+          অনুগ্রহ করে সময় দিয়ে সহযোগিতা করবেন, গেমটি লোড হচ্ছে
+        </div>
+      </div>
     </div>
 
-    <div id="unity-loading-text">Loading game...</div>
+    <div id="unity-warning"></div>
   </div>
-</div>
 
-<div id="fatal-error">
-  <div id="fatal-error-box">
-    <div id="fatal-error-title">Game failed to load</div>
-    <div id="fatal-error-message"></div>
-  </div>
-</div>
+  <script>
+    var canvas = document.querySelector("#unity-canvas");
+    var loadingBar = document.querySelector("#unity-loading-bar");
 
-<script>
-  const canvas = document.querySelector("#unity-canvas");
-  const container = document.querySelector("#unity-container");
-  const loadingScreen = document.querySelector("#unity-loading-screen");
-  const loadingText = document.querySelector("#unity-loading-text");
-  const progressBarFull = document.querySelector("#unity-progress-bar-full");
-  const warningBanner = document.querySelector("#unity-warning");
-  const fatalError = document.querySelector("#fatal-error");
-  const fatalErrorMessage = document.querySelector("#fatal-error-message");
-
-  const buildUrl = "Build";
-  const loaderUrl = buildUrl + "/v3.loader.js";
-
-  const config = {
-    arguments: [],
-    dataUrl: buildUrl + "/v3.data.br",
-    frameworkUrl: buildUrl + "/v3.framework.js.br",
-    codeUrl: buildUrl + "/v3.wasm.br",
-    streamingAssetsUrl: "StreamingAssets",
-    companyName: "DefaultCompany",
-    productName: "Qurbani Run",
-    productVersion: "0.1.0",
-    showBanner: unityShowBanner
-  };
-
-  /*
-    Faster mobile performance:
-    High-DPI phones can render too many pixels.
-    This keeps quality acceptable while reducing lag and heat.
-  */
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  function resizeGame() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    container.style.width = width + "px";
-    container.style.height = height + "px";
-
-    canvas.style.width = width + "px";
-    canvas.style.height = height + "px";
-  }
-
-  window.addEventListener("resize", resizeGame, { passive: true });
-  window.addEventListener("orientationchange", function () {
-    setTimeout(resizeGame, 250);
-  });
-
-  resizeGame();
-
-  function unityShowBanner(msg, type) {
-    function updateBannerVisibility() {
-      warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+    function resizeCanvas() {
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
     }
 
-    const div = document.createElement("div");
-    div.innerHTML = msg;
-    div.className = type === "error" ? "error" : "warning";
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("orientationchange", function () {
+      setTimeout(resizeCanvas, 250);
+    });
 
-    warningBanner.appendChild(div);
+    resizeCanvas();
 
-    if (type !== "error") {
-      setTimeout(function () {
-        if (div.parentNode) {
-          warningBanner.removeChild(div);
-        }
-        updateBannerVisibility();
-      }, 5000);
-    }
+    function unityShowBanner(msg, type) {
+      var warningBanner = document.querySelector("#unity-warning");
 
-    updateBannerVisibility();
-  }
-
-  function showFatalError(message) {
-    loadingScreen.classList.add("hidden");
-    fatalError.style.display = "flex";
-    fatalErrorMessage.textContent = message;
-  }
-
-  function hideLoadingScreen() {
-    loadingScreen.classList.add("hidden");
-  }
-
-  function focusGame() {
-    try {
-      canvas.focus();
-    } catch (error) {
-      // Ignore focus errors.
-    }
-  }
-
-  window.addEventListener("click", focusGame);
-  window.addEventListener("touchstart", focusGame, { passive: true });
-
-  function loadUnity() {
-    loadingText.textContent = "Loading Unity engine...";
-
-    const script = document.createElement("script");
-    script.src = loaderUrl;
-    script.async = true;
-
-    script.onload = function () {
-      if (typeof createUnityInstance !== "function") {
-        showFatalError(
-                "Unity loader loaded, but createUnityInstance was not found.\n\nCheck that Build/v3.loader.js is the real Unity loader file, not a Git LFS pointer."
-        );
-        return;
+      function updateBannerVisibility() {
+        warningBanner.style.display = warningBanner.children.length ? "block" : "none";
       }
 
-      loadingText.textContent = "Loading game files...";
+      var div = document.createElement("div");
+      div.innerHTML = msg;
 
-      createUnityInstance(canvas, config, function (progress) {
-        const percent = Math.round(progress * 100);
-        progressBarFull.style.width = percent + "%";
-        loadingText.textContent = "Loading game... " + percent + "%";
-      })
-              .then(function () {
-                hideLoadingScreen();
-                focusGame();
-              })
-              .catch(function (error) {
-                const msg = String(error || "");
+      if (type === "error") {
+        div.style.background = "red";
+        div.style.padding = "10px";
+      } else {
+        div.style.background = type === "warning" ? "yellow" : "white";
+        div.style.padding = "10px";
 
-                if (
-                        msg.includes("Unable to parse") ||
-                        msg.includes("corrupt") ||
-                        msg.includes("compression") ||
-                        msg.includes("Content-Encoding") ||
-                        msg.includes("decompress") ||
-                        msg.includes("Encoding")
-                ) {
-                  showFatalError(
-                          "Unity build compression error.\n\nYour build files are Brotli .br files, so the server must send Content-Encoding: br.\n\nCheck your vercel.json headers for:\n- Build/v3.data.br\n- Build/v3.framework.js.br\n- Build/v3.wasm.br\n\nOriginal error:\n" + msg
-                  );
-                  return;
-                }
+        setTimeout(function () {
+          if (div.parentNode === warningBanner) {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }
+        }, 5000);
+      }
 
-                showFatalError("Unity failed to start.\n\n" + msg);
-              });
+      warningBanner.appendChild(div);
+      updateBannerVisibility();
+    }
+
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/v3.loader.js";
+
+    var config = {
+      arguments: [],
+      dataUrl: buildUrl + "/v3.data.br",
+      frameworkUrl: buildUrl + "/v3.framework.js.br",
+      codeUrl: buildUrl + "/v3.wasm.br",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "Illusion Arc",
+      productName: "Qurbani Run Practice",
+      productVersion: "0.1.0",
+      showBanner: unityShowBanner
+    };
+
+    window.unityInstance = null;
+
+    loadingBar.style.display = "flex";
+
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+
+    script.onload = function () {
+      createUnityInstance(canvas, config, function () {
+        /* Spinner only. No percentage text. */
+      }).then(function (unityInstance) {
+        window.unityInstance = unityInstance;
+        loadingBar.style.display = "none";
+
+        canvas.focus();
+
+        console.log("[Qurbani Run Practice] Unity loaded without tournament session.");
+      }).catch(function (message) {
+        console.error("[Qurbani Run Practice] Unity load failed:", message);
+        alert(message);
+      });
     };
 
     script.onerror = function () {
-      showFatalError(
-              "Could not load Unity loader file:\n" +
-              loaderUrl +
-              "\n\nCheck that Build/v3.loader.js exists and is deployed correctly."
-      );
+      loadingBar.style.display = "none";
+      alert("Failed to load the game. Please refresh and try again.");
     };
 
     document.body.appendChild(script);
-  }
-
-  /*
-    Start loading immediately.
-    No manual fetch/pre-check of v3.data.br is used,
-    because that would slow loading by touching the huge data file twice.
-  */
-  loadUnity();
-</script>
+  </script>
 </body>
 </html>
