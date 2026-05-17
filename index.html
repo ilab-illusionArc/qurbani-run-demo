@@ -1,133 +1,482 @@
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Qurbani Run Practice</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-  </head>
-  <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes"
+  >
+
+  <title>Qurbani Run Practice</title>
+  <link rel="shortcut icon" href="TemplateData/favicon.ico">
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      touch-action: none;
+      overscroll-behavior: none;
+    }
+
+    #unity-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #unity-canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      outline: none;
+    }
+
+    #unity-loading-bar {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.08), transparent 34%),
+        radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.13), transparent 30%),
+        radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.10), transparent 30%),
+        #000;
+    }
+
+    .unity-loader-content {
+      width: min(360px, 86vw);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 26px;
+      background: rgba(12, 12, 12, 0.74);
+      box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.58),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .unity-progress-ring {
+      position: relative;
+      width: 92px;
+      height: 92px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background:
+        conic-gradient(
+          from -90deg,
+          #fbbf24 0deg,
+          #f97316 var(--progress-deg, 0deg),
+          rgba(255, 255, 255, 0.14) var(--progress-deg, 0deg),
+          rgba(255, 255, 255, 0.14) 360deg
+        );
+      box-shadow:
+        0 0 34px rgba(251, 191, 36, 0.22),
+        0 0 70px rgba(249, 115, 22, 0.10);
+      transition: background 160ms linear;
+    }
+
+    .unity-progress-ring::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: inherit;
+      background: #050505;
+      box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.05);
+    }
+
+    .unity-progress-ring::after {
+      content: "";
+      position: absolute;
+      inset: -7px;
+      border-radius: inherit;
+      border: 1px solid rgba(251, 191, 36, 0.22);
+      animation: unity-pulse 1.5s ease-in-out infinite;
+    }
+
+    .unity-progress-percent {
+      position: relative;
+      z-index: 1;
+      font-family: Arial, sans-serif;
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .unity-loading-title {
+      max-width: 86vw;
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      line-height: 1.45;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .unity-loading-subtitle {
+      margin-top: -8px;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.68);
+    }
+
+    .unity-progress-track {
+      width: 100%;
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .unity-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #fbbf24, #f97316);
+      box-shadow: 0 0 18px rgba(251, 191, 36, 0.34);
+      transition: width 160ms linear;
+    }
+
+    @keyframes unity-pulse {
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 0.45;
+      }
+
+      50% {
+        transform: scale(1.08);
+        opacity: 0.12;
+      }
+    }
+
+    #unity-warning {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      z-index: 30;
+      display: none;
+      max-width: 90vw;
+      transform: translateX(-50%);
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    #unity-warning div {
+      margin-bottom: 6px;
+      border-radius: 8px;
+      color: #000;
+    }
+
+    #unity-fullscreen-button {
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 15;
+      width: 46px;
+      height: 46px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+      background: rgba(10, 10, 10, 0.62);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition:
+        transform 160ms ease,
+        background 160ms ease,
+        border-color 160ms ease,
+        opacity 160ms ease;
+      opacity: 0.82;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #unity-fullscreen-button:hover {
+      transform: translateY(-2px) scale(1.03);
+      background: rgba(20, 20, 20, 0.78);
+      border-color: rgba(251, 191, 36, 0.42);
+      opacity: 1;
+    }
+
+    #unity-fullscreen-button:active {
+      transform: translateY(0) scale(0.96);
+    }
+
+    #unity-fullscreen-button svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+
+    @media (max-width: 640px) {
+      #unity-fullscreen-button {
+        right: 12px;
+        bottom: 12px;
+        width: 42px;
+        height: 42px;
+      }
+
+      #unity-fullscreen-button svg {
+        width: 20px;
+        height: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+
+    <div id="unity-loading-bar">
+      <div class="unity-loader-content">
+        <div id="unity-progress-ring" class="unity-progress-ring">
+          <div id="unity-progress-percent" class="unity-progress-percent">0%</div>
+        </div>
+
+        <div class="unity-loading-title">
+          অনুগ্রহ করে সময় দিয়ে সহযোগিতা করবেন
+        </div>
+
+        <div class="unity-loading-subtitle">
+          প্র্যাকটিস গেমটি লোড হচ্ছে... <span id="unity-loading-percent-text">0%</span>
+        </div>
+
+        <div class="unity-progress-track">
+          <div id="unity-progress-fill" class="unity-progress-fill"></div>
         </div>
       </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Qurbani Run Practice</div>
-      </div>
     </div>
-    <script>
-      var canvas = document.querySelector("#unity-canvas");
 
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
+    <button
+      id="unity-fullscreen-button"
+      type="button"
+      aria-label="Enter fullscreen"
+      title="Fullscreen"
+    >
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M8 3H4C3.45 3 3 3.45 3 4V8M16 3H20C20.55 3 21 3.45 21 4V8M8 21H4C3.45 21 3 20.55 3 20V16M16 21H20C20.55 21 21 20.55 21 20V16"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+
+    <div id="unity-warning"></div>
+  </div>
+
+  <script>
+    var canvas = document.querySelector("#unity-canvas");
+    var container = document.querySelector("#unity-container");
+    var loadingBar = document.querySelector("#unity-loading-bar");
+    var progressRing = document.querySelector("#unity-progress-ring");
+    var progressPercent = document.querySelector("#unity-progress-percent");
+    var progressPercentText = document.querySelector("#unity-loading-percent-text");
+    var progressFill = document.querySelector("#unity-progress-fill");
+    var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+
+    function resizeCanvas() {
+      canvas.style.width = window.innerWidth + "px";
+      canvas.style.height = window.innerHeight + "px";
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+
+    window.addEventListener("orientationchange", function () {
+      setTimeout(resizeCanvas, 250);
+    });
+
+    resizeCanvas();
+
+    function updateLoadingProgress(progress) {
+      var safeProgress = Math.max(0, Math.min(1, Number(progress) || 0));
+      var percentage = Math.round(safeProgress * 100);
+      var degrees = Math.round(safeProgress * 360);
+
+      progressRing.style.setProperty("--progress-deg", degrees + "deg");
+      progressPercent.textContent = percentage + "%";
+      progressPercentText.textContent = percentage + "%";
+      progressFill.style.width = percentage + "%";
+    }
+
+    function unityShowBanner(msg, type) {
+      var warningBanner = document.querySelector("#unity-warning");
+
+      function updateBannerVisibility() {
+        warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+      }
+
+      var div = document.createElement("div");
+      div.innerHTML = msg;
+
+      if (type === "error") {
+        div.style.background = "red";
+        div.style.padding = "10px";
+      } else {
+        div.style.background = type === "warning" ? "yellow" : "white";
+        div.style.padding = "10px";
+
+        setTimeout(function () {
+          if (div.parentNode === warningBanner) {
             warningBanner.removeChild(div);
             updateBannerVisibility();
-          }, 5000);
+          }
+        }, 5000);
+      }
+
+      warningBanner.appendChild(div);
+      updateBannerVisibility();
+    }
+
+    function requestBrowserFullscreen() {
+      var target = container || document.documentElement;
+
+      if (target.requestFullscreen) {
+        return target.requestFullscreen();
+      }
+
+      if (target.webkitRequestFullscreen) {
+        return target.webkitRequestFullscreen();
+      }
+
+      if (target.msRequestFullscreen) {
+        return target.msRequestFullscreen();
+      }
+
+      return Promise.reject(new Error("Fullscreen API is not supported."));
+    }
+
+    function updateFullscreenButtonState() {
+      var isFullscreen =
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement;
+
+      fullscreenButton.setAttribute(
+        "aria-label",
+        isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
+      );
+
+      fullscreenButton.setAttribute(
+        "title",
+        isFullscreen ? "Exit fullscreen" : "Fullscreen"
+      );
+    }
+
+    function toggleBrowserFullscreen() {
+      var isFullscreen =
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement;
+
+      if (isFullscreen) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
         }
-        updateBannerVisibility();
+
+        return;
       }
 
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/v3.loader.js";
-      var config = {
-        arguments: [],
-        dataUrl: buildUrl + "/v3.data.unityweb",
-        frameworkUrl: buildUrl + "/v3.framework.js.unityweb",
-        codeUrl: buildUrl + "/v3.wasm.unityweb",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "illusionArc",
-        productName: "Qurbani Run Practice",
-        productVersion: "0.1.0",
-        showBanner: unityShowBanner,
-        // errorHandler: function(err, url, line) {
-        //    alert("error " + err + " occurred at line " + line);
-        //    // Return 'true' if you handled this error and don't want Unity
-        //    // to process it further, 'false' otherwise.
-        //    return true;
-        // },
-      };
+      requestBrowserFullscreen().catch(function () {
+        if (window.unityInstance && typeof window.unityInstance.SetFullscreen === "function") {
+          window.unityInstance.SetFullscreen(1);
+        }
+      });
+    }
 
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
+    document.addEventListener("fullscreenchange", updateFullscreenButtonState);
+    document.addEventListener("webkitfullscreenchange", updateFullscreenButtonState);
+    document.addEventListener("msfullscreenchange", updateFullscreenButtonState);
 
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/v3.loader.js";
 
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
+    var config = {
+      arguments: [],
+      dataUrl: buildUrl + "/v3.data.unityweb",
+      frameworkUrl: buildUrl + "/v3.framework.js.unityweb",
+      codeUrl: buildUrl + "/v3.wasm.unityweb",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "illusionArc",
+      productName: "Qurbani Run Practice",
+      productVersion: "0.1.0",
+      showBanner: unityShowBanner
+    };
 
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
+    window.unityInstance = null;
 
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
+    loadingBar.style.display = "flex";
+    fullscreenButton.style.display = "none";
+    updateLoadingProgress(0);
 
+    var script = document.createElement("script");
+    script.src = loaderUrl;
 
-      } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
-      }
+    script.onload = function () {
+      createUnityInstance(canvas, config, function (progress) {
+        updateLoadingProgress(progress);
+      }).then(function (unityInstance) {
+        window.unityInstance = unityInstance;
+        updateLoadingProgress(1);
 
-      document.querySelector("#unity-loading-bar").style.display = "block";
+        setTimeout(function () {
+          loadingBar.style.display = "none";
+          fullscreenButton.style.display = "flex";
+          canvas.focus();
+        }, 250);
 
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                document.querySelector("#unity-loading-bar").style.display = "none";
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
+        fullscreenButton.onclick = function () {
+          toggleBrowserFullscreen();
+        };
 
-              }).catch((message) => {
-                alert(message);
-              });
-            };
+        console.log("[Qurbani Run Practice] Unity loaded successfully.");
+      }).catch(function (message) {
+        console.error("[Qurbani Run Practice] Unity load failed:", message);
+        alert(message);
+      });
+    };
 
-      document.body.appendChild(script);
+    script.onerror = function () {
+      loadingBar.style.display = "none";
+      alert("Failed to load the game. Please refresh and try again.");
+    };
 
-    </script>
-  </body>
+    document.body.appendChild(script);
+  </script>
+</body>
 </html>
