@@ -49,40 +49,127 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #000;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.08), transparent 34%),
+        radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.13), transparent 30%),
+        radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.10), transparent 30%),
+        #000;
     }
 
     .unity-loader-content {
+      width: min(360px, 86vw);
+      padding: 28px 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 18px;
-      padding: 24px;
       text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 26px;
+      background: rgba(12, 12, 12, 0.74);
+      box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.58),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
     }
 
-    .unity-spinner {
-      width: 56px;
-      height: 56px;
-      border: 5px solid rgba(255, 255, 255, 0.18);
-      border-top-color: #fff;
+    .unity-progress-ring {
+      position: relative;
+      width: 92px;
+      height: 92px;
+      display: grid;
+      place-items: center;
       border-radius: 999px;
-      animation: unity-spin 0.8s linear infinite;
+      background:
+        conic-gradient(
+          from -90deg,
+          #fbbf24 0deg,
+          #f97316 var(--progress-deg, 0deg),
+          rgba(255, 255, 255, 0.14) var(--progress-deg, 0deg),
+          rgba(255, 255, 255, 0.14) 360deg
+        );
+      box-shadow:
+        0 0 34px rgba(251, 191, 36, 0.22),
+        0 0 70px rgba(249, 115, 22, 0.10);
+      transition: background 160ms linear;
     }
 
-    .unity-loading-text {
+    .unity-progress-ring::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: inherit;
+      background: #050505;
+      box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.05);
+    }
+
+    .unity-progress-ring::after {
+      content: "";
+      position: absolute;
+      inset: -7px;
+      border-radius: inherit;
+      border: 1px solid rgba(251, 191, 36, 0.22);
+      animation: unity-pulse 1.5s ease-in-out infinite;
+    }
+
+    .unity-progress-percent {
+      position: relative;
+      z-index: 1;
+      font-family: Arial, sans-serif;
+      font-size: 20px;
+      line-height: 1;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .unity-loading-title {
       max-width: 86vw;
       font-family: Arial, sans-serif;
       font-size: 18px;
-      line-height: 1.5;
-      font-weight: 600;
+      line-height: 1.45;
+      font-weight: 700;
       color: #fff;
     }
 
-    @keyframes unity-spin {
-      to {
-        transform: rotate(360deg);
+    .unity-loading-subtitle {
+      margin-top: -8px;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.68);
+    }
+
+    .unity-progress-track {
+      width: 100%;
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .unity-progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #fbbf24, #f97316);
+      box-shadow: 0 0 18px rgba(251, 191, 36, 0.34);
+      transition: width 160ms linear;
+    }
+
+    @keyframes unity-pulse {
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 0.45;
+      }
+
+      50% {
+        transform: scale(1.08);
+        opacity: 0.12;
       }
     }
 
@@ -113,10 +200,20 @@
 
     <div id="unity-loading-bar">
       <div class="unity-loader-content">
-        <div class="unity-spinner"></div>
+        <div id="unity-progress-ring" class="unity-progress-ring">
+          <div id="unity-progress-percent" class="unity-progress-percent">0%</div>
+        </div>
 
-        <div class="unity-loading-text">
-          অনুগ্রহ করে সময় দিয়ে সহযোগিতা করবেন, গেমটি লোড হচ্ছে
+        <div class="unity-loading-title">
+          অনুগ্রহ করে সময় দিয়ে সহযোগিতা করবেন
+        </div>
+
+        <div class="unity-loading-subtitle">
+          প্র্যাকটিস গেমটি লোড হচ্ছে... <span id="unity-loading-percent-text">0%</span>
+        </div>
+
+        <div class="unity-progress-track">
+          <div id="unity-progress-fill" class="unity-progress-fill"></div>
         </div>
       </div>
     </div>
@@ -127,6 +224,10 @@
   <script>
     var canvas = document.querySelector("#unity-canvas");
     var loadingBar = document.querySelector("#unity-loading-bar");
+    var progressRing = document.querySelector("#unity-progress-ring");
+    var progressPercent = document.querySelector("#unity-progress-percent");
+    var progressPercentText = document.querySelector("#unity-loading-percent-text");
+    var progressFill = document.querySelector("#unity-progress-fill");
 
     function resizeCanvas() {
       canvas.style.width = window.innerWidth + "px";
@@ -139,6 +240,17 @@
     });
 
     resizeCanvas();
+
+    function updateLoadingProgress(progress) {
+      var safeProgress = Math.max(0, Math.min(1, Number(progress) || 0));
+      var percentage = Math.round(safeProgress * 100);
+      var degrees = Math.round(safeProgress * 360);
+
+      progressRing.style.setProperty("--progress-deg", degrees + "deg");
+      progressPercent.textContent = percentage + "%";
+      progressPercentText.textContent = percentage + "%";
+      progressFill.style.width = percentage + "%";
+    }
 
     function unityShowBanner(msg, type) {
       var warningBanner = document.querySelector("#unity-warning");
@@ -187,18 +299,22 @@
     window.unityInstance = null;
 
     loadingBar.style.display = "flex";
+    updateLoadingProgress(0);
 
     var script = document.createElement("script");
     script.src = loaderUrl;
 
     script.onload = function () {
-      createUnityInstance(canvas, config, function () {
-        /* Spinner only. No percentage text. */
+      createUnityInstance(canvas, config, function (progress) {
+        updateLoadingProgress(progress);
       }).then(function (unityInstance) {
         window.unityInstance = unityInstance;
-        loadingBar.style.display = "none";
+        updateLoadingProgress(1);
 
-        canvas.focus();
+        setTimeout(function () {
+          loadingBar.style.display = "none";
+          canvas.focus();
+        }, 250);
 
         console.log("[Qurbani Run Practice] Unity loaded without tournament session.");
       }).catch(function (message) {
