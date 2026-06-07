@@ -250,6 +250,33 @@
       }
     }
   </style>
+
+  <script>
+  (function () {
+  try {
+  if (!/[?&]ia_native=1(?:&|$)/.test(location.search)) return;
+  if (!window.parent || window.parent === window) return;
+  var ACK = 'NATIVE_SHARE_RESULT';
+  function toB64(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){var s=String(r.result||'');var i=s.indexOf(',');res(i>=0?s.slice(i+1):s);};r.onerror=rej;r.readAsDataURL(file);});}
+  navigator.canShare = function(){ return true; };
+  navigator.share = function (data) {
+  data = data || {};
+  var id = 'sh_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  var f = (data.files && data.files[0]) || null;
+  var fp = f ? toB64(f).then(function(b){return {name:f.name||'share.png',mime:f.type||'image/png',data:b};}) : Promise.resolve(null);
+  return fp.then(function (file) {
+  return new Promise(function (resolve, reject) {
+  var done = false;
+  function onAck(e){ if(!e.data||e.data.type!==ACK||e.data.id!==id) return; done=true; window.removeEventListener('message',onAck); if(e.data.ok) resolve(); else reject(new Error(e.data.error||'native share failed')); }
+  window.addEventListener('message', onAck);
+  window.parent.postMessage({type:'NATIVE_SHARE',id:id,title:data.title||'',text:data.text||'',url:data.url||'',file:file}, '*');
+  setTimeout(function(){ if(done) return; window.removeEventListener('message',onAck); reject(new Error('native share timeout')); }, 2500);
+  });
+  });
+  };
+  } catch (e) {}
+  })();
+  </script>
 </head>
 
 <body>
